@@ -1,0 +1,17 @@
+# UI plugin example: adds a small overlay badge to every SceneCard.
+#
+# Demonstrates:
+#  - PluginApi.patch.after("SceneCard.Image", ...) to decorate an existing component
+#  - PluginApi.Event.addEventListener("stash:location", ...) to react to navigation
+#  - PluginApi.GQL hook usage from a registered route
+#  - CSS shipped alongside JS, no build step required (raw React.createElement)
+
+name: Scene Overlay
+description: Adds a rating badge overlay to each scene card and a /plugins/scene-overlay test page.
+version: 1.0.0
+
+ui:
+  javascript:
+    - scene-overlay.js
+  css:
+    - scene-overlay.css

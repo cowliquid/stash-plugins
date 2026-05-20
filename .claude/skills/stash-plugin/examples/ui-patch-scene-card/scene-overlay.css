@@ -1,0 +1,36 @@
+/* scene-overlay: badge on each SceneCard image, plus styles for the custom page. */
+
+.scene-overlay-wrap {
+  position: relative;
+  display: block;
+}
+
+.scene-overlay-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #ffd54f;
+  font-size: 0.8rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.scene-overlay-page {
+  padding: 1.5rem;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.scene-overlay-page ul {
+  list-style: none;
+  padding: 0;
+}
+
+.scene-overlay-item {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}

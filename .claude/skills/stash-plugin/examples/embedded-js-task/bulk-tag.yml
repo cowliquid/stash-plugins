@@ -1,0 +1,29 @@
+# Embedded-JS plugin: zero install required, runs entirely inside Stash.
+#
+# Adds a "Tag untagged scenes" task. The implementation uses the goja runtime's
+# globals: input (args), log (.Info/.Progress), gql (.Do for GraphQL), util.
+#
+# When to prefer embedded JS over a Python plugin:
+#  - The work is "loop over scenes and call mutations" without external deps
+#  - You want the plugin to install with zero extra setup
+#  - You're OK with ES5 (no Promise, no fetch, var not let/const)
+
+name: Bulk Auto-Tag
+description: Adds a configurable tag to every scene that has no tags.
+version: 1.0.0
+
+exec:
+  - bulk-tag.js
+interface: js
+
+settings:
+  tagName:
+    displayName: Tag to apply
+    description: Name of the tag (created if missing).
+    type: STRING
+
+tasks:
+  - name: Tag untagged scenes
+    description: Apply the configured tag to every scene that currently has zero tags.
+    defaultArgs:
+      mode: run

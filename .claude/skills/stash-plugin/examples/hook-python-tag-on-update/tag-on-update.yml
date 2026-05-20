@@ -1,0 +1,45 @@
+# Minimal Python plugin demonstrating: a hook, a task, settings, GraphQL via stashapi.
+#
+# When dropped into ~/.stash/plugins/tag-on-update/, this plugin:
+#  - Adds a "Reviewed" tag to any scene that gets edited (hook on Scene.Update.Post)
+#  - Ships a "Tag all scenes" task that bulk-applies the same tag
+#  - Exposes two settings: the tag name and a dry-run toggle
+#
+# The plugin ID, derived from this manifest's filename, is "tag-on-update".
+# That is the key used to look up settings via configuration.plugins["tag-on-update"].
+
+name: Tag On Update
+description: Adds a configurable tag to scenes whenever they are edited.
+version: 1.0.0
+url: https://example.com/tag-on-update
+
+exec:
+  - python
+  - "{pluginDir}/tag_on_update.py"
+interface: raw
+errLog: warning
+
+settings:
+  tagName:
+    displayName: Tag to apply
+    description: Name of the tag added to updated scenes (created if missing).
+    type: STRING
+  zzDryRun:
+    displayName: Dry run
+    description: Log what would happen, but don't actually modify anything.
+    type: BOOLEAN
+
+tasks:
+  - name: Tag all scenes
+    description: Bulk-apply the tag to every scene in the library.
+    defaultArgs:
+      mode: tag_all
+
+hooks:
+  - name: Tag on update
+    description: Apply the tag whenever a scene is created or updated.
+    triggeredBy:
+      - Scene.Create.Post
+      - Scene.Update.Post
+    defaultArgs:
+      mode: tag_one
