@@ -7,16 +7,18 @@
   const React = PluginApi.React;
   const e = React.createElement;
 
-  function PlayerButton(props) {
+  function PlayerButton() {
     const { useToast } = PluginApi.hooks;
     const Toast = useToast();
-    const scene = props.scene;
+
+    const sceneId = (function () {
+      const m = window.location.pathname.match(/\/scenes\/(\d+)/);
+      return m ? m[1] : null;
+    })();
 
     function onClick() {
-      const id = scene && scene.id;
-      const title = (scene && scene.title) || "(untitled)";
-      Toast.success("Scene #" + id + ": " + title);
-      console.log("[scene-player-button] clicked", scene);
+      Toast.success(sceneId ? "Scene #" + sceneId : "Test Button clicked");
+      console.log("[scene-player-button] clicked, sceneId=", sceneId);
     }
 
     return e(
@@ -30,7 +32,14 @@
     );
   }
 
-  PluginApi.patch.after("ScenePlayer", function (props, result) {
-    return [result, e(PlayerButton, { key: "scene-player-button", scene: props.scene })];
+  PluginApi.patch.after("ScenePlayer", function () {
+    const args = arguments;
+    const result = args[args.length - 1];
+    return e(
+      React.Fragment,
+      null,
+      result,
+      e(PlayerButton, { key: "scene-player-button" })
+    );
   });
 })();

@@ -1,6 +1,6 @@
 name: Scene Player Button
 description: Test plugin that adds a button below the scene player.
-version: 0.1.0
+version: 0.1.1
 
 ui:
   javascript:
