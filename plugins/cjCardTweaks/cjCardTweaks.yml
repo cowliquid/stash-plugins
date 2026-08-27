@@ -1,6 +1,6 @@
 name: CJ's Card Tweaks.
 description: Provides various tweaks for the Stash Cards.
-version: 1.2
+version: 1.3
 # requires: CommunityScriptsUILibrary
 ui:
   requires:
@@ -27,4 +27,8 @@ settings:
   performerDetails:
     displayName: Performer details on cards
     description: "Displays the performer's details text on performer cards."
+    type: BOOLEAN
+  debug:
+    displayName: Debug logging
+    description: "Logs card tweak activity to the browser console. Filter the console by [cjCardTweaks]."
     type: BOOLEAN

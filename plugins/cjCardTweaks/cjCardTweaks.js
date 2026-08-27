@@ -1,8 +1,36 @@
 (async () => {
   "use strict";
 
+  const PLUGIN_VERSION = "1.3";
+  const LOG_PREFIX = "[cjCardTweaks]";
+
   const userSettings = await csLib.getConfiguration("cjCardTweaks", {});
   const SETTINGS = parseSettings(userSettings ?? "");
+
+  // Always logged: confirms which build of the plugin the browser actually
+  // loaded, and which settings it parsed. If the version here is not the one
+  // you just installed, the browser is serving a cached copy of this file.
+  console.info(`${LOG_PREFIX} v${PLUGIN_VERSION} loaded`, {
+    rawConfig: userSettings,
+    parsedSettings: SETTINGS,
+  });
+
+  /**
+   * Log to the console when the "Debug logging" setting is enabled.
+   */
+  function debugLog(...args) {
+    if (!SETTINGS.debug) return;
+    console.log(LOG_PREFIX, ...args);
+  }
+
+  // Statuses worth sampling ids for when debugging a card that stayed blank.
+  const DETAILS_MISSES = new Set([
+    "cache-miss",
+    "field-missing",
+    "details-empty",
+    "no-card-section",
+  ]);
+
   const CARD_KEYS = {
     galleries: "gallery",
     images: "image",
@@ -28,7 +56,8 @@
         key === "fileCount" ||
         key === "addBannerDimension" ||
         key === "performerProfileCards" ||
-        key === "performerDetails"
+        key === "performerDetails" ||
+        key === "debug"
       ) {
         acc[key] = settings[key];
       } else {
@@ -207,6 +236,14 @@
   }
 
   function handleCards(card, isHome = false) {
+    // Logged before waitForClass so a silent failure can be told apart: no line
+    // here means the path listener never matched; a line here with no
+    // "executeTweaks" line after it means the cards never rendered in time.
+    debugLog(`path matched for .${card.class}`, {
+      path: window.location.pathname,
+      isHome,
+    });
+
     waitForClass(card.class, () => {
       executeTweaks(card);
     });
@@ -220,11 +257,39 @@
   }) {
     const cards = document.querySelectorAll(`.${cardClass}`);
 
+    // Tally of what happened to each card, so a page of 40 cards produces one
+    // summary line instead of 40. Keys are the statuses returned below.
+    const detailsOutcomes = {};
+    const detailsMisses = [];
+
     cards.forEach((card) => {
       maybeAddFileCount(card, stashData, isContentCard);
       maybeAddDimensionToBanner(card);
-      maybeAddPerformerDetails(card, stashData, key);
+
+      const outcome = maybeAddPerformerDetails(card, stashData, key);
+      detailsOutcomes[outcome] = (detailsOutcomes[outcome] ?? 0) + 1;
+      if (
+        SETTINGS.debug &&
+        DETAILS_MISSES.has(outcome) &&
+        detailsMisses.length < 5
+      ) {
+        const link = card.querySelector(".thumbnail-section > a");
+        detailsMisses.push(`${getIdFromLink(link)} (${outcome})`);
+      }
     });
+
+    debugLog(`executeTweaks .${cardClass}`, {
+      path: window.location.pathname,
+      cardsInDom: cards.length,
+      idsInInterceptorCache: Object.keys(stashData ?? {}).length,
+    });
+
+    if (key === "performer") {
+      debugLog("performer details outcomes", detailsOutcomes);
+      if (detailsMisses.length) {
+        debugLog("sample performer ids that produced no details", detailsMisses);
+      }
+    }
   }
 
   /**
@@ -253,21 +318,33 @@
    * @param {Element} card - Card element cards list.
    * @param {Object} stashData - Data fetched from the GraphQL interceptor. e.g. stash.performers.
    * @param {string} cardKey - Singular card type, e.g. "performer".
+   * @returns {string} Status describing what happened, used for debug output.
    */
   function maybeAddPerformerDetails(card, stashData, cardKey) {
-    if (!SETTINGS.performerDetails || cardKey !== "performer") return;
+    if (!SETTINGS.performerDetails) return "setting-off";
+    if (cardKey !== "performer") return "not-a-performer-card";
 
     // verify this function was not run twice on the same card for some strange reason
-    if (card.querySelector(".card-performer-details")) return;
+    if (card.querySelector(".card-performer-details")) return "already-added";
 
     const id = getIdFromLink(card.querySelector(".thumbnail-section > a"));
-    if (!id) return;
+    if (!id) return "no-id-on-card";
 
-    const details = stashData[id]?.details?.trim();
-    if (!details) return;
+    const data = stashData[id];
+    // These three cases look identical on screen but have different fixes, so
+    // they are reported separately:
+    //   cache-miss    -> the interceptor never saw a response for this id
+    //                    (e.g. Apollo served the list from its own cache)
+    //   field-missing -> a slim performer fragment overwrote the cached entry
+    //   details-empty -> the performer genuinely has no details set
+    if (!data) return "cache-miss";
+    if (!("details" in data)) return "field-missing";
+
+    const details = data.details?.trim();
+    if (!details) return "details-empty";
 
     const cardSection = card.querySelector(".card-section");
-    if (!cardSection) return;
+    if (!cardSection) return "no-card-section";
 
     const el = document.createElement("span");
     el.className = "card-performer-details";
@@ -275,6 +352,8 @@
     el.textContent = details;
     el.title = details;
     cardSection.appendChild(el);
+
+    return "added";
   }
 
   /**
