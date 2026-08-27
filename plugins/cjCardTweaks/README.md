@@ -20,3 +20,6 @@ Adds an additional dimension to the rating banners.
 ![unnamed_2](https://github.com/user-attachments/assets/f505417d-ed0c-40c4-9c78-647081a41307)
 
 Modify the performer cards to use a traditional profile design
+
+### Performer details on cards
+Shows the performer's `details` text on performer cards, underneath the existing card info. The text is clamped to three lines, with the full text available as a tooltip. Performers with no details are left untouched.

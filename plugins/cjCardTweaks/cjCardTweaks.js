@@ -14,6 +14,7 @@
 
   const CARDS = Object.entries(CARD_KEYS).reduce((acc, [plural, singular]) => {
     acc[singular] = {
+      key: singular,
       class: `${singular}-card`,
       data: stash[plural],
       isContentCard: ["scene", "gallery", "image"].includes(singular),
@@ -26,7 +27,8 @@
       if (
         key === "fileCount" ||
         key === "addBannerDimension" ||
-        key === "performerProfileCards"
+        key === "performerProfileCards" ||
+        key === "performerDetails"
       ) {
         acc[key] = settings[key];
       } else {
@@ -40,6 +42,10 @@
     "span.file-count.badge.badge-pill.badge-info{position: absolute;top: 0.3rem;right: 0.5rem;border-radius: 50%;width: 1.7rem;height: 1.7rem;padding: 5px 8px;font-size: 100%;box-shadow: 1px 3px 4px rgba(0, 0, 0, 0.5)}.grid-card:hover .file-count.badge{opacity: 0;transition: opacity 0.5s}";
   const PERFORMER_PROFILE_CARD_STYLE =
     ".performer-card:hover img.performer-card-image{box-shadow: 0 0 0 rgb(0 0 0 / 20%), 0 0 6px rgb(0 0 0 / 90%);transition: box-shadow .5s .5s}@media (min-width: 1691px){.performer-recommendations .card .performer-card-image{height: unset}}button.btn.favorite-button.not-favorite,button.btn.favorite-button.favorite{transition: filter .5s .5s}.performer-card:hover .thumbnail-section button.btn.favorite-button.not-favorite, .performer-card:hover .thumbnail-section button.btn.favorite-button.favorite{filter: drop-shadow(0 0 2px rgba(0, 0, 0, .9))}.performer-card .thumbnail-section button.btn.favorite-button.not-favorite, .performer-card .thumbnail-section button.btn.favorite-button.favorite{top: 10px;filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .9))}.item-list-container .performer-card__age,.recommendation-row .performer-card__age,.item-list-container .performer-card .card-section-title,.recommendation-row .performer-card .card-section-title,.item-list-container .performer-card .thumbnail-section,.recommendation-row .performer-card .thumbnail-section{display: flex;align-content: center;justify-content: center}.item-list-container .performer-card .thumbnail-section a,.recommendation-row .performer-card .thumbnail-section a{display: contents}.item-list-container .performer-card-image,.recommendation-row .performer-card-image{aspect-ratio: 1 / 1;display: flex;object-fit: cover;border: 3px solid var(--plex-yelow);border-radius: 50%;min-width: unset;position: relative;width: 58%;margin: auto;z-index: 1;margin-top: 1.5rem;box-shadow:0 13px 26px rgb(0 0 0 / 20%),0 3px 6px rgb(0 0 0 / 90%);object-position: center;transition: box-shadow .5s .5s}.item-list-container .performer-card hr,.recommendation-row .performer-card hr{width: 90%}.item-list-container .performer-card .fi,.recommendation-row .performer-card .fi{position: absolute;top: 81.5%;left: 69%;border-radius: 50% !important;background-size: cover;margin-left: -1px;height: 1.5rem;width: 1.5rem;z-index: 10;border: solid 2px #252525;box-shadow: unset}.item-list-container .performer-card .card-popovers .btn,.recommendation-row .performer-card .card-popovers .btn{font-size: 0.9rem}";
+  const PERFORMER_DETAILS_STYLE =
+    ".performer-card .card-performer-details{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin-top:.4rem;font-size:.8rem;line-height:1.2;opacity:.75;white-space:pre-wrap;overflow-wrap:anywhere}";
+  const PERFORMER_DETAILS_CENTERED_STYLE =
+    ".item-list-container .performer-card .card-performer-details,.recommendation-row .performer-card .card-performer-details{text-align:center}";
   const RATING_BANNER_3D_STYLE =
     ".grid-card{overflow:unset}.detail-group .rating-banner-3d,.rating-banner{display:none}.grid-card:hover .rating-banner-3d{opacity:0;transition:opacity .5s}.rating-banner-3d{height:110px;left:-6px;overflow:hidden;position:absolute;top:-6px;width:110px}.rating-banner-3d span{box-shadow:0 5px 4px rgb(0 0 0 / 50%);position:absolute;display:block;width:170px;padding:10px 5px 10px 0;background-color:#ff6a07;color:#fff;font:700 1rem/1 Lato,sans-serif;text-shadow:0 1px 1px rgba(0,0,0,.2);text-transform:uppercase;text-align:center;letter-spacing:1px;right:-20px;top:24px;transform:rotate(-45deg)}.rating-banner-3d::before{top:0;right:0;position:absolute;z-index:-1;content:'';display:block;border:5px solid #a34405;border-top-color:transparent;border-left-color:transparent}.rating-banner-3d::after{bottom:0;left:0;position:absolute;z-index:-1;content:'';display:block;border:5px solid #963e04}";
 
@@ -54,6 +60,11 @@
     styleElement.innerHTML += RATING_BANNER_3D_STYLE;
   if (SETTINGS.performerProfileCards)
     styleElement.innerHTML += PERFORMER_PROFILE_CARD_STYLE;
+  if (SETTINGS.performerDetails) {
+    styleElement.innerHTML += PERFORMER_DETAILS_STYLE;
+    if (SETTINGS.performerProfileCards)
+      styleElement.innerHTML += PERFORMER_DETAILS_CENTERED_STYLE;
+  }
 
   function createElementFromHTML(htmlString) {
     const div = document.createElement("div");
@@ -197,47 +208,72 @@
 
   function handleCards(card, isHome = false) {
     waitForClass(card.class, () => {
-      executeTweaks(card.data, card.class, card.isContentCard);
+      executeTweaks(card);
     });
   }
 
-  function executeTweaks(stashData, cardClass, isContentCard) {
+  function executeTweaks({
+    key,
+    class: cardClass,
+    data: stashData,
+    isContentCard,
+  }) {
     const cards = document.querySelectorAll(`.${cardClass}`);
 
     cards.forEach((card) => {
       maybeAddFileCount(card, stashData, isContentCard);
       maybeAddDimensionToBanner(card);
-      maybeAddDetails(card, stashData, isContentCard);
+      maybeAddPerformerDetails(card, stashData, key);
     });
   }
 
   /**
-   * Add badge with file count on cards with more than 1 associated file
+   * Resolve the entity id a card links to.
+   *
+   * @param {Element} link - Anchor element inside the card thumbnail section.
+   * @returns {string|null} The trailing path segment of the link, or null.
+   */
+  function getIdFromLink(link) {
+    if (!link) return null;
+    try {
+      return new URL(link.href).pathname.split("/").pop();
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Add the performer's details text to performer cards.
+   *
+   * The details come from the cached findPerformers response, so nothing is
+   * rendered until the interceptor has seen data for that performer. Some
+   * queries (e.g. the performer select dropdown) return a slimmer performer
+   * without `details`, so a missing value is treated as "nothing to show".
    *
    * @param {Element} card - Card element cards list.
    * @param {Object} stashData - Data fetched from the GraphQL interceptor. e.g. stash.performers.
-   * @param {boolean} isContentCard - Flag indicating if card is a content card.
+   * @param {string} cardKey - Singular card type, e.g. "performer".
    */
-  function maybeAddDetails(card, stashData, isContentCard) {
-    // Return if not content card
-    if (!SETTINGS.performerProfileCards || isContentCard) return;
+  function maybeAddPerformerDetails(card, stashData, cardKey) {
+    if (!SETTINGS.performerDetails || cardKey !== "performer") return;
 
     // verify this function was not run twice on the same card for some strange reason
-    const fileCountBadge = card.querySelector(".card-performer-details");
-    if (fileCountBadge) return;
+    if (card.querySelector(".card-performer-details")) return;
 
-    const link = card.querySelector(".thumbnail-section > a");
-    const id = new URL(link.href).pathname.split("/").pop();
-    const data = stashData[id];
-    
-    if (!data) return;
+    const id = getIdFromLink(card.querySelector(".thumbnail-section > a"));
+    if (!id) return;
 
-    const el = createElementFromHTML(
-      `<span class="card-performer-details">` +
-        data?.details +
-        `</span>`
-    );
+    const details = stashData[id]?.details?.trim();
+    if (!details) return;
+
     const cardSection = card.querySelector(".card-section");
+    if (!cardSection) return;
+
+    const el = document.createElement("span");
+    el.className = "card-performer-details";
+    // textContent so details containing markup are rendered as written
+    el.textContent = details;
+    el.title = details;
     cardSection.appendChild(el);
   }
 
@@ -256,10 +292,12 @@
     if (fileCountBadge) return;
 
     const link = card.querySelector(".thumbnail-section > a");
-    const id = new URL(link.href).pathname.split("/").pop();
+    const id = getIdFromLink(link);
+    if (!id) return;
+
     const data = stashData[id];
 
-    if (!data || data.files.length <= 1) return;
+    if (!data?.files || data.files.length <= 1) return;
 
     const el = createElementFromHTML(
       `<span class="file-count badge badge-pill badge-info">` +
