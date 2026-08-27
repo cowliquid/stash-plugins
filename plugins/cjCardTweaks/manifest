@@ -1,0 +1,12 @@
+id: cjCardTweaks
+name: CJ's Card Tweaks.
+metadata:
+  description: Provides various tweaks for the Stash Cards.
+version: 1.1-034a8a7
+date: "2025-05-18 19:37:19"
+requires: []
+source_repository: https://stashapp.github.io/CommunityScripts/stable/index.yml
+files:
+- cjCardTweaks.yml
+- README.md
+- cjCardTweaks.js
